@@ -535,13 +535,6 @@ console.log(profile);
 > **Nota:** O método `fetchBusinessProducts` foi removido pois não está disponível na API pública do Baileys.
 
 ---
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT - veja o arquivo [LICENSE](https://github.com/Laxeder/rompot/blob/main/LICENSE) para mais detalhes.
-
-## Botões interativos no Telegram
-
 O envio de botões interativos é suportado no Telegram usando o tipo `ButtonMessage`. Veja um exemplo:
 
 ```ts
