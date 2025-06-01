@@ -99,6 +99,8 @@ export default class WhatsAppBot extends BotEvents implements IBot {
   constructor(config?: Partial<WhatsAppBotConfig>) {
     super();
 
+    this.groupMetadataCache = new NodeCache();
+
     const store = makeInMemoryStore({ logger: this.logger });
 
     this.store = store;
@@ -1133,10 +1135,20 @@ export default class WhatsAppBot extends BotEvents implements IBot {
 
   /** Envia uma mensagem */
   public async send(message: Message): Promise<Message> {
-    const waMsg = (await new ConvertToWAMessage(this, message).refactory()).waMessage;
-    const sent = await this.sock.sendMessage(message.chat.id, waMsg);
-    if (sent && sent.key && sent.key.id) message.id = sent.key.id;
-    return message;
+    try {
+      const waMsg = (await new ConvertToWAMessage(this, message).refactory()).waMessage;
+      const sent = await this.sock.sendMessage(message.chat.id, waMsg);
+      if (sent && sent.key && sent.key.id) message.id = sent.key.id;
+      return message;
+    } catch (error) {
+      // Log detalhado para diagnóstico
+      console.error('[WhatsAppBot.send] Erro ao enviar mensagem', {
+        chatId: message?.chat?.id,
+        messageObj: message,
+        error
+      });
+      throw error;
+    }
   }
 
   /** Remove uma mensagem (marca como removida para todos) */
