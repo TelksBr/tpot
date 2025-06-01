@@ -19,7 +19,7 @@ Uma biblioteca para desenvolvimento de ChatBot multi-plataforma em JavaScript/Ty
 | Envio de mídia          | ✅       | ✅              |
 | Envio de stickers       | ✅       | ✅              |
 | Envio de lista          | ❌       | ❌              |
-| Envio de botão          | ❌       | ❌              |
+| Envio de botão          | ❌       | ✅              |
 | Envio de enquete        | ✅       | ✅              |
 | Criação de chats        | ✅       | 🔧              |
 | Histórico de mensagens  | ✅       | ❌              |

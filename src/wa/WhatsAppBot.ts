@@ -93,7 +93,7 @@ export default class WhatsAppBot extends BotEvents implements IBot {
   public profileUrl: string = '';
   public lastConnectionUpdateDate: number = Date.now();
 
-  public checkConnectionInterval: NodeJS.Timer | null = null;
+  public checkConnectionInterval: NodeJS.Timeout | null = null;
   public configEvents: ConfigWAEvents = new ConfigWAEvents(this);
 
   constructor(config?: Partial<WhatsAppBotConfig>) {
