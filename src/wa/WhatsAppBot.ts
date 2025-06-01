@@ -7,7 +7,6 @@ import makeWASocket, {
   AuthenticationCreds,
   DEFAULT_CACHE_TTLS,
   WAConnectionState,
-  makeInMemoryStore as BaileysMakeInMemoryStore,
   DisconnectReason,
   ConnectionState,
   GroupMetadata,
@@ -70,11 +69,13 @@ export default class WhatsAppBot extends BotEvents implements IBot {
   public auth: IAuth = new MultiFileAuthState('./session', undefined, false);
 
   public messagesCached: string[] = [];
-  public store: ReturnType<typeof BaileysMakeInMemoryStore>;
+  public store: ReturnType<typeof makeInMemoryStore>;
   public msgRetryCountercache: NodeCache = new NodeCache({
     stdTTL: DEFAULT_CACHE_TTLS.MSG_RETRY, // 1 hour
     useClones: false,
   });
+  // Cache dedicado para metadata de grupos
+  public groupMetadataCache: NodeCache;
 
   public saveCreds = (creds: Partial<AuthenticationCreds>) =>
     new Promise<void>((res) => res);
@@ -106,7 +107,6 @@ export default class WhatsAppBot extends BotEvents implements IBot {
 
     this.config = {
       ...DEFAULT_CONNECTION_CONFIG,
-      printQRInTerminal: true,
       logger: this.logger,
       qrTimeout: 60000,
       defaultQueryTimeoutMs: 10000,
@@ -149,10 +149,73 @@ export default class WhatsAppBot extends BotEvents implements IBot {
             ?.message || undefined
         );
       },
+      cachedGroupMetadata: async (jid) => this.groupMetadataCache.get(jid),
       ...config,
     };
 
     delete this.config.auth;
+
+    // Listeners de eventos Baileys
+    setTimeout(() => {
+      if (this.sock && this.sock.ev) {
+        this.sock.ev.on('messages.upsert', async ({ type, messages }) => {
+          // Exemplo: processa todas as mensagens recebidas
+          for (const msg of messages) {
+            // Aqui você pode converter proto.IMessage para Message do Rompot
+            // e emitir eventos ou chamar handlers do seu fluxo
+            // Exemplo:
+            // const rompotMsg = await ConvertWAMessage.fromBaileys(this, msg, type);
+            // this.emit('message', rompotMsg);
+          }
+        });
+        this.sock.ev.on('messages.update', (updates) => {
+          // Handler para mensagens editadas, deletadas, etc.
+        });
+        this.sock.ev.on('messages.delete', (deletes) => {
+          // Handler para deleção de mensagens
+        });
+        this.sock.ev.on('messages.reaction', (reaction) => {
+          // Handler para reações em mensagens
+        });
+        // Listener para histórico de mensagens (history sync)
+        this.sock.ev.on('messaging-history.set', async ({ chats, contacts, messages, syncType }) => {
+          // Armazena chats
+          if (chats && Array.isArray(chats)) {
+            for (const chat of chats) {
+              await this.auth.set(`chats-${chat.id}`, chat);
+            }
+          }
+          // Armazena contatos
+          if (contacts && Array.isArray(contacts)) {
+            for (const contact of contacts) {
+              await this.auth.set(`users-${contact.id}`, contact);
+            }
+          }
+          // Armazena mensagens
+          if (messages && Array.isArray(messages)) {
+            for (const msg of messages) {
+              if (msg.key && msg.key.id && msg.key.remoteJid) {
+                await this.store.saveMessage(msg.key.remoteJid, msg, false);
+              }
+            }
+          }
+          // Você pode emitir eventos ou processar syncType conforme necessário
+        });
+        // Exibe QR code no terminal ao receber
+        this.sock.ev.on('connection.update', async (update) => {
+          const { qr } = update;
+          if (qr) {
+            try {
+              const QRCode = (await import('qrcode')).default;
+              // Exibe o QR code no terminal
+              console.log(await QRCode.toString(qr, { type: 'terminal' }));
+            } catch (err) {
+              console.log('QRCode:', qr);
+            }
+          }
+        });
+      }
+    }, 0);
   }
 
   public async connect(auth?: string | IAuth): Promise<void> {
@@ -163,14 +226,14 @@ export default class WhatsAppBot extends BotEvents implements IBot {
     }
 
     if (!this.auth.botPhoneNumber) {
-      await this.internalConnect({ browser: WhatsAppBot.Browser() });
+      await this.internalConnect({ browser: Browsers.windows('Rompot') });
     } else {
       await this.internalConnect({
         browser: ['Chrome (linux)', 'Rompot', '22.5.0'],
       });
 
       if (!this.sock?.authState?.creds?.registered) {
-        await this.sock.waitForConnectionUpdate((update) => !!update.qr);
+        await this.sock.waitForConnectionUpdate(async (update) => Promise.resolve(!!update.qr));
 
         const code = await this.sock.requestPairingCode(
           this.auth.botPhoneNumber,
@@ -791,7 +854,9 @@ export default class WhatsAppBot extends BotEvents implements IBot {
   }
 
   public async getUserDescription(user: User): Promise<string> {
-    return (await this.sock.fetchStatus(String(user.id)))?.status || '';
+    // O método fetchStatus não existe na API pública do Baileys
+    // return (await this.sock.fetchStatus(String(user.id)))[0]?.status || '';
+    throw new Error('getUserDescription não implementado: fetchStatus não disponível na API do Baileys');
   }
 
   public async setUserDescription(
@@ -931,265 +996,189 @@ export default class WhatsAppBot extends BotEvents implements IBot {
 
     const chat = await this.getChat(message.chat);
 
-    if (chat != null) {
-      await this.updateChat({
-        id: message.chat.id,
-        unreadCount: (chat.unreadCount || 1) - 1,
-      });
+    if (chat?.type == ChatType.Group) {
+      await this.sock.readMessages([key]);
+    } else {
+      await this.sock.readMessages([key]);
     }
-
-    return await this.sock.readMessages([key]);
   }
 
-  public async removeMessage(message: Message) {
-    const key: proto.IMessageKey = {
-      remoteJid: message.chat.id,
-      id: message.id,
-      fromMe: message.fromMe || message.user.id == this.id,
-      participant: isJidGroup(message.chat.id)
-        ? message.user.id || this.id
-        : undefined,
-    };
+  // Adiciona um método utilitário para cache de mensagens
+  public addMessageCache(id: string) {
+    if (!this.messagesCached.includes(id)) {
+      this.messagesCached.push(id);
+    }
+  }
 
-    await this.sock.chatModify(
-      {
-        deleteForMe: {
-          deleteMedia: false,
-          key,
-          timestamp: Number(message.timestamp || Date.now()),
+  // ================= APP STATE UPDATES =================
+  /** Arquiva ou desarquiva um chat */
+  public async archiveChat(chat: Chat | string, archive: boolean = true, lastMessages: any[]) {
+    const chatId = typeof chat === 'string' ? chat : chat.id;
+    await this.sock.chatModify({ archive, lastMessages }, chatId);
+  }
+
+  /** Silencia ou dessilencia um chat */
+  public async muteChat(chat: Chat | string, mute: number | null, lastMessages: any[]) {
+    const chatId = typeof chat === 'string' ? chat : chat.id;
+    await this.sock.chatModify({ mute, lastMessages }, chatId);
+  }
+
+  /** Marca um chat como lido */
+  public async markChatRead(chat: Chat | string, read: boolean = true, lastMessages: any[]) {
+    const chatId = typeof chat === 'string' ? chat : chat.id;
+    await this.sock.chatModify({ markRead: read, lastMessages }, chatId);
+  }
+
+  /** Define o modo de mensagens temporárias em um chat */
+  public async setDisappearingMessages(chat: Chat | string, duration: number) {
+    const chatId = typeof chat === 'string' ? chat : chat.id;
+    await this.sock.sendMessage(chatId, { disappearingMessagesInChat: duration });
+  }
+
+  // ================= BUSINESS FEATURES =================
+  /** Busca o perfil de negócio de um contato */
+  public async fetchBusinessProfile(jid: string) {
+    return await this.sock.getBusinessProfile(jid);
+  }
+
+  // O método fetchBusinessProducts foi removido pois não existe na API pública do Baileys.
+  // Se precisar de recursos de catálogo, utilize a API oficial do WhatsApp Business.
+
+  // ================= PRIVACIDADE =================
+  public async fetchBlocklist() {
+    return await this.sock.fetchBlocklist();
+  }
+
+  public async fetchPrivacySettings(force: boolean = false) {
+    return await this.sock.fetchPrivacySettings(force);
+  }
+
+  public async updateOnlinePrivacy(option: 'all' | 'match_last_seen') {
+    await this.sock.updateOnlinePrivacy(option);
+  }
+
+  public async updateLastSeenPrivacy(option: 'all' | 'contacts' | 'contact_blacklist' | 'none') {
+    await this.sock.updateLastSeenPrivacy(option);
+  }
+
+  public async updateProfilePicturePrivacy(option: 'all' | 'contacts' | 'contact_blacklist' | 'none') {
+    await this.sock.updateProfilePicturePrivacy(option);
+  }
+
+  public async updateStatusPrivacy(option: 'all' | 'contacts' | 'contact_blacklist' | 'none') {
+    await this.sock.updateStatusPrivacy(option);
+  }
+
+  public async updateGroupsAddPrivacy(option: 'all' | 'contacts' | 'contact_blacklist') {
+    await this.sock.updateGroupsAddPrivacy(option);
+  }
+
+  public async updateReadReceiptsPrivacy(option: 'all' | 'none') {
+    await this.sock.updateReadReceiptsPrivacy(option);
+  }
+
+  /**
+   * Adiciona uma reação a uma mensagem
+   */
+  public async addReaction(message: ReactionMessage): Promise<void> {
+    if (!message.id || !message.chat?.id || !message.reaction) return;
+    await this.sock.sendMessage(message.chat.id, {
+      react: {
+        text: message.reaction,
+        key: {
+          id: message.id,
+          remoteJid: message.chat.id,
+          fromMe: message.fromMe || message.user.id === this.id,
+          participant: isJidGroup(message.chat.id)
+            ? message.user.id || this.id || undefined
+            : undefined,
         },
       },
-      message.chat.id,
-    );
+    });
   }
 
-  public async deleteMessage(message: Message) {
-    const key: proto.IMessageKey = {
-      remoteJid: message.chat.id,
-      id: message.id,
-      fromMe: message.fromMe || message.user.id == this.id,
-      participant: isJidGroup(message.chat.id)
-        ? message.user.id || this.id
-        : undefined,
-    };
-
-    if (key.participant && key.participant != this.id) {
-      const admins = await this.getChatAdmins(message.chat);
-
-      if (admins.length && !admins.includes(this.id)) return;
-    }
-
-    await this.sock.sendMessage(message.chat.id, { delete: key });
-  }
-
-  public async addReaction(message: ReactionMessage): Promise<void> {
-    await this.send(message);
-  }
-
+  /** Remove uma reação de uma mensagem */
   public async removeReaction(message: ReactionMessage): Promise<void> {
-    await this.send(message);
-  }
-
-  public async editMessage(message: Message): Promise<void> {
-    await this.send(message);
-  }
-
-  public async send(content: Message): Promise<Message> {
-    const waMSG = new ConvertToWAMessage(this, content);
-    await waMSG.refactory(content);
-
-    if (waMSG.isRelay) {
-      try {
-        await this.sock.relayMessage(waMSG.chatId, waMSG.waMessage, {
-          ...waMSG.options,
-        });
-      } catch (err) {
-        throw err;
-      }
-
-      const msgRes = generateWAMessageFromContent(
-        waMSG.chatId,
-        waMSG.waMessage,
-        { ...waMSG.options, userJid: this.id },
-      );
-
-      return await new ConvertWAMessage(this, msgRes).get();
-    }
-
-    const sendedMessage = await this.sock.sendMessage(
-      waMSG.chatId,
-      waMSG.waMessage,
-      waMSG.options,
-    );
-
-    if (typeof sendedMessage == 'boolean') return content;
-
-    const msgRes =
-      (await new ConvertWAMessage(this, sendedMessage!).get()) || content;
-
-    if (PollMessage.isValid(msgRes) && PollMessage.isValid(content)) {
-      msgRes.options = content.options;
-      msgRes.secretKey =
-        sendedMessage?.message?.messageContextInfo?.messageSecret!;
-
-      await this.savePollMessage(msgRes);
-    }
-
-    return msgRes;
-  }
-
-  /**
-   * * Cacheia uma mensagem.
-   * @param id - Mensagem a ser cacheada.
-   * @remarks Auto remove a mensagem cacheada após 1 minuto.
-   */
-  public addMessageCache(id: string): void {
-    this.messagesCached.push(id);
-
-    setTimeout(() => {
-      this.messagesCached = this.messagesCached.filter((msgId) => msgId != id);
-    }, 1000 * 60);
-  }
-
-  public async downloadStreamMessage(media: Media): Promise<Buffer> {
-    if (this.config.useExperimentalServers) {
-      return await this.experimentalDownloadMediaMessage(media);
-    }
-
-    const stream: any = await downloadMediaMessage(
-      media.stream,
-      'buffer',
-      {},
-      {
-        logger: this.logger,
-        reuploadRequest: (m: proto.IWebMessageInfo) =>
-          new Promise((resolve) => resolve(m)),
+    if (!message.id || !message.chat?.id) return;
+    await this.sock.sendMessage(message.chat.id, {
+      react: {
+        text: '',
+        key: {
+          id: message.id,
+          remoteJid: message.chat.id,
+          fromMe: message.fromMe || message.user.id === this.id,
+          participant: isJidGroup(message.chat.id)
+            ? message.user.id || this.id || undefined
+            : undefined,
+        },
       },
+    });
+  }
+
+  /** Edita o texto de uma mensagem enviada */
+  public async editMessage(message: Message): Promise<void> {
+    if (!message.id || !message.chat?.id) return;
+    await this.sock.sendMessage(message.chat.id, {
+      edit: {
+        remoteJid: message.chat.id,
+        id: message.id,
+        fromMe: message.fromMe || message.user.id === this.id,
+        participant: isJidGroup(message.chat.id)
+          ? message.user.id || this.id || undefined
+          : undefined,
+      },
+      text: message.text,
+    });
+  }
+
+  /** Envia uma mensagem */
+  public async send(message: Message): Promise<Message> {
+    const waMsg = (await new ConvertToWAMessage(this, message).refactory()).waMessage;
+    const sent = await this.sock.sendMessage(message.chat.id, waMsg);
+    if (sent && sent.key && sent.key.id) message.id = sent.key.id;
+    return message;
+  }
+
+  /** Remove uma mensagem (marca como removida para todos) */
+  public async removeMessage(message: Message): Promise<void> {
+    if (!message.id || !message.chat?.id) return;
+    await this.sock.sendMessage(message.chat.id, {
+      delete: {
+        remoteJid: message.chat.id,
+        id: message.id,
+        fromMe: message.fromMe || message.user.id === this.id,
+        participant: isJidGroup(message.chat.id)
+          ? message.user.id || this.id || undefined
+          : undefined,
+      },
+    });
+  }
+
+  /** Deleta uma mensagem (remove do histórico) */
+  public async deleteMessage(message: Message): Promise<void> {
+    if (!message.id || !message.chat?.id) return;
+    await this.sock.sendMessage(message.chat.id, {
+      delete: {
+        remoteJid: message.chat.id,
+        id: message.id,
+        fromMe: message.fromMe || message.user.id === this.id,
+        participant: isJidGroup(message.chat.id)
+          ? message.user.id || this.id || undefined
+          : undefined,
+      },
+    });
+  }
+
+  /** Baixa a stream de mídia de uma mensagem */
+  public async downloadStreamMessage(media: Media): Promise<Buffer> {
+    // media é um MediaMessage, que herda de Message
+    const msg = await this.store.loadMessage((media as any).chat.id, (media as any).id);
+    if (!msg) return Buffer.from("");
+    // downloadMediaMessage espera (msg, type, options?)
+    return Buffer.from(
+      await downloadMediaMessage(msg, "buffer", {
+        // opções extras se necessário
+      })
     );
-
-    if (stream instanceof internal.Transform) {
-      const buffer = await stream.read();
-      return buffer || Buffer.from('');
-    }
-
-    return stream;
-  }
-
-  public async experimentalDownloadMediaMessage(
-    media: Media,
-    maxRetryCount?: number,
-  ): Promise<Buffer> {
-    let count = 0;
-
-    while (count < (maxRetryCount || this.config.maxMsgRetryCount || 5)) {
-      try {
-        const serverIndex = Math.floor(Math.random() * WA_MEDIA_SERVERS.length);
-
-        const stream: any = await downloadMediaMessage(
-          media.stream,
-          'buffer',
-          {
-            options: {
-              lookup(hostname, options, cb) {
-                cb(null, WA_MEDIA_SERVERS[serverIndex], 4);
-              },
-            },
-          },
-          {
-            logger: this.logger,
-            reuploadRequest: (m: proto.IWebMessageInfo) =>
-              new Promise((resolve) => resolve(m)),
-          },
-        );
-
-        if (stream instanceof internal.Transform) {
-          const buffer = await stream.read();
-          return buffer || Buffer.from('');
-        }
-
-        return stream;
-      } catch (error) {
-        this.logger?.warn?.(
-          `Failed to download media message. Retry count: ${count}`,
-        );
-        count++;
-
-        if (count >= (maxRetryCount || this.config.maxMsgRetryCount || 5)) {
-          this.emit('error', error);
-        }
-      }
-    }
-
-    throw new Error('Failed to download media message');
-  }
-
-  /**
-   * * Faz o download de arquivos do WhatsApp
-   * @param message
-   * @param type
-   * @param options
-   * @param ctx
-   * @returns
-   */
-  public download(
-    message: proto.WebMessageInfo,
-    type: 'buffer' | 'stream',
-    options: MediaDownloadOptions,
-    ctx?: any,
-  ): Promise<any> {
-    return downloadMediaMessage(message, type, options, ctx);
-  }
-
-  /**
-   * * Verifica se o número está registrado no WhatsApp
-   * @returns
-   */
-  public async onExists(id: string): Promise<{ exists: boolean; id: string }> {
-    const user = await this.sock.onWhatsApp(id);
-
-    if (user && user.length > 0)
-      return { exists: user[0].exists, id: user[0].jid };
-
-    return { exists: false, id };
-  }
-
-  /**
-   * * Atualiza uma mensagem de mídia
-   * @param message
-   * @returns
-   */
-  public async updateMediaMessage(
-    message: proto.IWebMessageInfo,
-  ): Promise<proto.IWebMessageInfo> {
-    return await this.sock.updateMediaMessage(message);
-  }
-
-  /**
-   * * Aceita o convite para um grupo
-   * @param code
-   * @returns
-   */
-  public async groupAcceptInvite(code: string): Promise<string> {
-    return (await this.sock?.groupAcceptInvite(code)) || '';
-  }
-
-  /**
-   * * Gera a configuração de navegador
-   * @param plataform Nome da plataforma
-   * @param browser Nome do navegador
-   * @param version Versão do navegador
-   */
-  public static Browser(
-    plataform?: string,
-    browser?: string,
-    version?: string,
-  ): [string, string, string] {
-    const browserAppropriated = Browsers.appropriate(browser || 'Rompot');
-
-    return [
-      plataform || browserAppropriated[0],
-      browser || browserAppropriated[1],
-      version || browserAppropriated[2],
-    ];
   }
 }

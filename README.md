@@ -484,6 +484,58 @@ client.demoteUserInChat(chat, user);
 client.rejectCall(call);
 ```
 
+## Utilitários de Estado do App e Recursos de Negócio (WhatsAppBot)
+
+A partir da versão mais recente, o WhatsAppBot oferece métodos utilitários para manipular o estado dos chats e acessar recursos de negócio do WhatsApp Business. Veja exemplos abaixo:
+
+### App State Updates
+
+- **Arquivar um chat**
+
+```ts
+// Arquiva um chat
+await client.bot.archiveChat(chat, true, lastMessages);
+```
+
+- **Silenciar um chat**
+
+```ts
+// Silencia um chat por 1 hora (em segundos)
+await client.bot.muteChat(chat, 3600, lastMessages);
+// Para remover o silêncio:
+await client.bot.muteChat(chat, null, lastMessages);
+```
+
+- **Marcar chat como lido**
+
+```ts
+// Marca o chat como lido
+await client.bot.markChatRead(chat, true, lastMessages);
+```
+
+- **Ativar mensagens temporárias**
+
+```ts
+// Define o chat para mensagens temporárias (em segundos)
+await client.bot.setDisappearingMessages(chat, 86400); // 24 horas
+```
+
+> **Nota:** O parâmetro `lastMessages` é obrigatório e deve ser um array com as últimas mensagens do chat, conforme exigido pela API do Baileys.
+
+### Business Features
+
+- **Obter perfil de negócio**
+
+```ts
+// Busca o perfil de negócio de um usuário ou grupo
+const profile = await client.bot.fetchBusinessProfile(chat.id);
+console.log(profile);
+```
+
+> **Nota:** O método `fetchBusinessProducts` foi removido pois não está disponível na API pública do Baileys.
+
+---
+
 ## 📄 Licença
 
 Este projeto está sob a licença MIT - veja o arquivo [LICENSE](https://github.com/Laxeder/rompot/blob/main/LICENSE) para mais detalhes.

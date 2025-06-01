@@ -8,6 +8,8 @@ import Chat from "../modules/chat/Chat";
 export default class ReactionMessage extends Message {
   /** O tipo da mensagem é sempre MessageType.Reaction. */
   public readonly type = MessageType.Reaction;
+  /** A reação a ser enviada (ex: emoji). */
+  public reaction: string = "";
 
   /**
    * Cria uma nova instância de ReactionMessage.
@@ -18,6 +20,7 @@ export default class ReactionMessage extends Message {
    */
   constructor(chat?: Chat | string, reaction: string = "", receive: Message | string = "", others: Partial<ReactionMessage> = {}) {
     super(chat, reaction);
+    this.reaction = reaction;
 
     // Define o ID da mensagem com base no parâmetro 'receive'.
     this.id = typeof receive === "string" ? receive : typeof receive == "object" ? receive?.id || "" : "";
