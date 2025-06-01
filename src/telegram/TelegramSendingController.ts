@@ -12,6 +12,8 @@ import TextMessage from '../messages/TextMessage';
 import FileMessage from '../messages/FileMessage';
 import PollMessage from '../messages/PollMessage';
 import Message from '../messages/Message';
+import ButtonMessage from '../messages/ButtonMessage';
+import { ButtonType } from '../messages/ButtonMessage';
 
 import TelegramToRompotConverter from './TelegramToRompotConverter';
 import { TelegramUtils } from './TelegramUtils';
@@ -25,6 +27,10 @@ export default class TelegramSendingController {
   }
 
   public async send(message: Message): Promise<Message> {
+    if (ButtonMessage.isValid(message)) {
+      return await this.sendButtonMessage(message);
+    }
+
     if (TextMessage.isValid(message)) {
       return await this.sendText(message);
     }
@@ -244,6 +250,32 @@ export default class TelegramSendingController {
       fileOptions,
     );
 
+    return await new TelegramToRompotConverter(telegramMessage).convert();
+  }
+
+  public async sendButtonMessage(message: ButtonMessage): Promise<Message> {
+    const options = TelegramSendingController.getOptions(message);
+    // Mapeia os botões do Rompot para InlineKeyboardMarkup do Telegram
+    options.reply_markup = {
+      inline_keyboard: [
+        message.buttons.map((btn) => {
+          if (btn.type === ButtonType.Url) {
+            return { text: btn.text, url: btn.content };
+          } else if (btn.type === ButtonType.Call) {
+            // Telegram não suporta call direto, pode usar url tel:
+            return { text: btn.text, url: `tel:${btn.content}` };
+          } else {
+            // Reply vira callback_data
+            return { text: btn.text, callback_data: btn.content };
+          }
+        }),
+      ],
+    };
+    const telegramMessage = await this.telegram.bot.sendMessage(
+      Number(message.chat.id),
+      `${message.text}`,
+      options,
+    );
     return await new TelegramToRompotConverter(telegramMessage).convert();
   }
 

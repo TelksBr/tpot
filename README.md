@@ -539,3 +539,26 @@ console.log(profile);
 ## 📄 Licença
 
 Este projeto está sob a licença MIT - veja o arquivo [LICENSE](https://github.com/Laxeder/rompot/blob/main/LICENSE) para mais detalhes.
+
+## Botões interativos no Telegram
+
+O envio de botões interativos é suportado no Telegram usando o tipo `ButtonMessage`. Veja um exemplo:
+
+```ts
+import { ButtonMessage } from "rompot";
+
+const chat = new Chat("id_do_chat");
+const btnMsg = new ButtonMessage(chat, "Escolha uma opção:", "Rodapé opcional");
+
+btnMsg.addReply("Botão 1", "resposta_1");
+btnMsg.addUrl("Site", "https://exemplo.com");
+btnMsg.addCall("Ligar", "5511999999999");
+
+await client.send(btnMsg);
+```
+
+- Botões do tipo `Reply` são enviados como botões de callback.
+- Botões do tipo `Url` abrem um link.
+- Botões do tipo `Call` abrem o discador do telefone (se suportado pelo Telegram).
+
+O recebimento do clique em botões de callback pode ser tratado usando os eventos do Telegram.
