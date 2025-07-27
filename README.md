@@ -3,7 +3,7 @@
 
 Uma biblioteca para desenvolvimento de ChatBot multi-plataforma em JavaScript/TypeScript
 
-Fork do projeto Rompot. Este repositório é mantido por TelksBr: https://github.com/TelksBr/tpot
+Fork do projeto Rompot. Este repositório é mantido por [TelksBr](https://github.com/TelksBr/tpot)
 
 ## 🛠 Recursos
 
@@ -223,7 +223,7 @@ client.on("error", (err) => {
 });
 ```
 
-## Mensagem
+
 
 ```ts
 import { Message } from "tpot";
@@ -483,6 +483,7 @@ client.demoteUserInChat(chat, user);
 
 - Rejeitar chamada
   - Você pode receber a chamada pelo evento `new-call` ou `call`, porém o evento `call` também recebe atualização de chamadas invez de somente o pedido dela.
+
 ```ts
 client.rejectCall(call);
 ```
