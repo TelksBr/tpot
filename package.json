@@ -1,7 +1,7 @@
 {
-  "name": "rompot",
+  "name": "tpot",
   "version": "2.2.4",
-  "description": "Chatbot API em TypeScript",
+  "description": "Chatbot API multi-plataforma em TypeScript. Fork do Rompot.",
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "scripts": {
@@ -14,15 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Laxeder/rompot.git"
+    "url": "git+https://github.com/TelksBr/tpot.git"
   },
   "keywords": [],
-  "author": "Laxeder",
+  "author": "TelksBr",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Laxeder/rompot/issues"
+    "url": "https://github.com/TelksBr/tpot/issues"
   },
-  "homepage": "https://github.com/Laxeder/rompot#readme",
+  "homepage": "https://github.com/TelksBr/tpot#readme",
   "dependencies": {
     "@adiwajshing/keyed-db": "0.2.4",
     "@hapi/boom": "9.1.3",
