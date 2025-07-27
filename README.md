@@ -1,9 +1,9 @@
 
-# tpot
+# trompot
 
 Uma biblioteca para desenvolvimento de ChatBot multi-plataforma em JavaScript/TypeScript
 
-Fork do projeto Rompot. Este repositório é mantido por [TelksBr](https://github.com/TelksBr/tpot)
+Fork do projeto Rompot. Este repositório é mantido por TelksBr: https://github.com/TelksBr/trompot
 
 ## 🛠 Recursos
 
@@ -32,17 +32,17 @@ Fork do projeto Rompot. Este repositório é mantido por [TelksBr](https://githu
 Instalando pacote
 
 ```sh
-npm i tpot
+npm i trompot
 ```
 
 Importando pacote
 
 ```ts
 // TypeScript
-import Client, { WhatsAppBot, TelegramBot } from "tpot";
+import Client, { WhatsAppBot, TelegramBot } from "trompot";
 
 // Javascript
-const { Client, WhatsAppBot, TelegramBot } = require("tpot");
+const { Client, WhatsAppBot, TelegramBot } = require("trompot");
 ```
 
 ## WhatsApp
@@ -63,7 +63,7 @@ client.on("qr", (qr) => {
 Necessita passar um método de autenticação personalizado incluindo o número do bot a ser conectado.
 
 ```ts
-import Client, { WhatsAppBot, MultiFileAuthState } from "tpot";
+import Client, { WhatsAppBot, MultiFileAuthState } from "trompot";
 
 const client = new Client(new WhatsAppBot());
 
@@ -123,7 +123,7 @@ client.config = config;
 ## ⚙️ Criando comandos
 
 ```ts
-import { CMDKey, Command, Message } from "tpot";
+import { CMDKey, Command, Message } from "trompot";
 
 // Cria um comando com o nome hello
 // Ao ser executado envia a mensagem "Hello World!"
@@ -223,10 +223,10 @@ client.on("error", (err) => {
 });
 ```
 
-
+## Mensagem
 
 ```ts
-import { Message } from "tpot";
+import { Message } from "trompot";
 
 // Chat
 const chat = new Chat("id12345");
@@ -262,7 +262,7 @@ msg.removeReaction();
 ## Mensagem de mídia
 
 ```ts
-import { ImageMessage, VideoMessage, AudioMessage, FileMessage, StickerMessage } from "tpot";
+import { ImageMessage, VideoMessage, AudioMessage, FileMessage, StickerMessage } from "trompot";
 
 // Criar mensagem de audio
 const audioMessage = new AudioMessage(chat, Buffer.from(""));
@@ -283,7 +283,7 @@ const stickerMessage = new StickerMessage(chat, Buffer.from(""));
 ## Outros tipos de mensagem
 
 ```ts
-import { LocationMessage, ContactMessage, ButtonMessage, ListMessage, PollMessage } from "tpot";
+import { LocationMessage, ContactMessage, ButtonMessage, ListMessage, PollMessage } from "trompot";
 
 // Criar mensagem de localiação
 // Latitude, Longitude
@@ -323,7 +323,7 @@ pollMessage.addOption("Hi", "id-hi-123");
 ## Mensagem personalizada
 
 ```ts
-import { CustomMessage } from "tpot";
+import { CustomMessage } from "trompot";
 
 // Ex: conteúdo para baileys
 const content = { text: "texto" }; 
@@ -341,7 +341,7 @@ customMessage.extra = { isRelay: true };
 ## Lendo resposas de ButtonMessage, ListMessage e PollMessage
 
 ```ts
-import { Command, Message, CMDKey, CMDRunType, isPollMessage } from "tpot";
+import { Command, Message, CMDKey, CMDRunType, isPollMessage } from "trompot";
 
 class ButtonCommand extends Command {
   public onRead() {
@@ -483,7 +483,6 @@ client.demoteUserInChat(chat, user);
 
 - Rejeitar chamada
   - Você pode receber a chamada pelo evento `new-call` ou `call`, porém o evento `call` também recebe atualização de chamadas invez de somente o pedido dela.
-
 ```ts
 client.rejectCall(call);
 ```
@@ -542,7 +541,7 @@ console.log(profile);
 O envio de botões interativos é suportado no Telegram usando o tipo `ButtonMessage`. Veja um exemplo:
 
 ```ts
-import { ButtonMessage } from "tpot";
+import { ButtonMessage } from "trompot";
 
 const chat = new Chat("id_do_chat");
 const btnMsg = new ButtonMessage(chat, "Escolha uma opção:", "Rodapé opcional");

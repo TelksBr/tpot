@@ -1,3 +1,7 @@
+import { Buffer } from 'buffer';
+// Removido import inválido de Timeout
+// @ts-ignore
+declare var global: any;
 import type { AdvancedCommandStartOptions } from '../modules/command/advanced/AdvancedCommandStart';
 
 import { readFileSync } from 'fs';
@@ -1031,17 +1035,17 @@ export default class Client<Bot extends IBot = IBot>
 
   public static getClients(): Record<string, Client<IBot>> {
     if (
-      !('rompot-clients' in global) ||
-      typeof global['rompot-clients'] != 'object'
+      !('trompot-clients' in global) ||
+      typeof global['trompot-clients'] != 'object'
     ) {
-      global['rompot-clients'] = {};
+      global['trompot-clients'] = {};
     }
 
-    return global['rompot-clients'];
+    return global['trompot-clients'];
   }
 
   public static saveClients(clients: Record<string, Client<IBot>>): void {
-    global['rompot-clients'] = clients;
+    global['trompot-clients'] = clients;
   }
 
   public static getClient(id: string): Client<IBot> {
@@ -1052,8 +1056,8 @@ export default class Client<Bot extends IBot = IBot>
     }
 
     if (
-      global['default-rompot-worker'] ||
-      global['rompot-cluster-save']?.worker
+      global['default-trompot-worker'] ||
+      global['trompot-cluster-save']?.worker
     ) {
       return ClientCluster.getClient(id);
     }
@@ -1063,13 +1067,13 @@ export default class Client<Bot extends IBot = IBot>
 
   public static saveClient(client: Client<IBot>): void {
     if (
-      !('rompot-clients' in global) ||
-      typeof global['rompot-clients'] != 'object'
+      !('trompot-clients' in global) ||
+      typeof global['trompot-clients'] != 'object'
     ) {
-      global['rompot-clients'] = {};
+      global['trompot-clients'] = {};
     }
 
-    global['rompot-clients'][client.id] = client;
+    global['trompot-clients'][client.id] = client;
   }
 
   public static generateId(): string {

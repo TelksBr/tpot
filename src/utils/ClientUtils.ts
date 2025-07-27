@@ -1,3 +1,6 @@
+import type { Buffer } from 'node:buffer';
+// @ts-ignore
+declare var global: any;
 import IClient from '../client/IClient';
 import IBot from '../bot/IBot';
 
@@ -13,13 +16,13 @@ export namespace ClientUtils {
    */
   export function getClients(): Record<string, IClient<IBot>> {
     if (
-      !('rompot-clients' in global) ||
-      typeof global['rompot-clients'] != 'object'
+      !('trompot-clients' in global) ||
+      typeof global['trompot-clients'] != 'object'
     ) {
-      global['rompot-clients'] = {};
+      global['trompot-clients'] = {};
     }
 
-    return global['rompot-clients'];
+    return global['trompot-clients'];
   }
 
   /**
@@ -27,7 +30,7 @@ export namespace ClientUtils {
    * @param clients - Clientes que serão definidios.
    */
   export function saveClients(clients: Record<string, IClient<IBot>>): void {
-    global['rompot-clients'] = clients;
+    global['trompot-clients'] = clients;
   }
 
   /**
@@ -43,8 +46,8 @@ export namespace ClientUtils {
     }
 
     if (
-      global['default-rompot-worker'] ||
-      global['rompot-cluster-save']?.worker
+      global['default-trompot-worker'] ||
+      global['trompot-cluster-save']?.worker
     ) {
       return ClientUtils.getClient(id);
     }
@@ -58,8 +61,8 @@ export namespace ClientUtils {
    */
   export function saveClient(client: IClient<IBot>): void {
     if (
-      !('rompot-clients' in global) ||
-      typeof global['rompot-clients'] != 'object'
+      !('trompot-clients' in global) ||
+      typeof global['trompot-clients'] != 'object'
     ) {
       global['rompot-clients'] = {};
     }

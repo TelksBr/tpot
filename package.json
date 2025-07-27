@@ -1,5 +1,5 @@
 {
-  "name": "tpot",
+  "name": "trompot",
   "version": "2.2.4",
   "description": "Chatbot API multi-plataforma em TypeScript. Fork do Rompot.",
   "main": "lib/index.js",
@@ -14,15 +14,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TelksBr/tpot.git"
+    "url": "git+https://github.com/TelksBr/trompot.git"
   },
   "keywords": [],
   "author": "TelksBr",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/TelksBr/tpot/issues"
+    "url": "https://github.com/TelksBr/trompot/issues"
   },
-  "homepage": "https://github.com/TelksBr/tpot#readme",
+  "homepage": "https://github.com/TelksBr/trompot#readme",
   "dependencies": {
     "@adiwajshing/keyed-db": "0.2.4",
     "@hapi/boom": "9.1.3",
@@ -49,7 +49,7 @@
     "@laxeder/wa-sticker": "4.4.5",
     "@types/body-parser": "1.19.5",
     "@types/express": "5.0.2",
-    "@types/node": "22.15.29",
+    "@types/node": "^22.15.29",
     "@types/node-telegram-bot-api": "0.64.8",
     "@types/ws": "8.18.1",
     "dotenv": "16.5.0",
